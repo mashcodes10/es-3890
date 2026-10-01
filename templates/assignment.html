@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Week 5 Flask Activity</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 60px auto; padding: 0 24px; line-height: 1.6; }
+    textarea { width: 100%; box-sizing: border-box; padding: 12px; font: inherit; }
+    button { margin-top: 12px; padding: 8px 28px; font: inherit; }
+    .output { white-space: pre-wrap; padding: 16px; background: #f3f5f7; }
+    .error { color: #a32020; }
+  </style>
+</head>
+<body>
+  <h1>{{ 'Text capture (Q8)' if echo_mode else 'Ask Groq (Q9)' }}</h1>
+  <nav><a href="/echo">Text capture</a> · <a href="/assignment">Ask Groq</a></nav>
+  <form method="post">
+    <p><label for="text">{{ 'Enter text' if echo_mode else 'Your prompt' }}</label></p>
+    <textarea id="text" name="text" rows="4" required>{{ text }}</textarea>
+    <button type="submit">Go</button>
+  </form>
+  {% if response %}
+    <h2>{{ 'Captured text' if echo_mode else 'Model response' }}</h2>
+    <div class="output">{{ response }}</div>
+  {% endif %}
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+</body>
+</html>

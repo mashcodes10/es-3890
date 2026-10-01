@@ -1,0 +1,10 @@
+__pycache__/
+.vscode/
+.env
+prompts.jsonl
+
+.venv/
+
+.DS_Store
+
+evidence/week5/app-before-week5.txt

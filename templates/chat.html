@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Groq Chat</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --panel: #fff; --text: #1d1d1f; --muted: #6e6e73;
+    --user: #2563eb; --user-text: #fff; --bot: #ececf1; --border: #e3e3e8; --err: #b91c1c;
+  }
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; flex: 1; }
+  select, button {
+    font: inherit; color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  }
+  button { cursor: pointer; }
+  #log { flex: 1; overflow-y: auto; padding: 20px 16px; }
+  .wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .msg { padding: 10px 14px; border-radius: 14px; max-width: 85%; white-space: pre-wrap; word-wrap: break-word; }
+  .user { align-self: flex-end; background: var(--user); color: var(--user-text); }
+  .assistant { align-self: flex-start; background: var(--bot); }
+  .error { align-self: flex-start; color: var(--err); font-size: 14px; }
+  .typing { color: var(--muted); font-style: italic; }
+  .empty { color: var(--muted); text-align: center; margin-top: 20vh; }
+  form {
+    display: flex; gap: 8px; padding: 12px 16px; max-width: 792px; width: 100%; margin: 0 auto;
+  }
+  textarea {
+    flex: 1; resize: none; font: inherit; color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; max-height: 200px;
+  }
+  #send { background: var(--user); color: var(--user-text); border: none; padding: 0 18px; border-radius: 12px; }
+  #send:disabled { opacity: .5; cursor: default; }
+  /* Rendered markdown in assistant replies */
+  .msg.md { white-space: normal; }
+  .md > :first-child { margin-top: 0; }
+  .md > :last-child { margin-bottom: 0; }
+  .md p, .md ul, .md ol, .md pre, .md table, .md blockquote { margin: 0 0 10px; }
+  .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 6px; line-height: 1.3; }
+  .md h1 { font-size: 1.3em; } .md h2 { font-size: 1.2em; } .md h3 { font-size: 1.08em; } .md h4 { font-size: 1em; }
+  .md ul, .md ol { padding-left: 22px; }
+  .md li + li { margin-top: 2px; }
+  .md code { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(0,0,0,.07); padding: 1px 5px; border-radius: 4px; }
+  .md pre { background: #1e1e24; color: #e8e8ee; padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+  .md pre code { background: none; padding: 0; color: inherit; }
+  .md blockquote { border-left: 3px solid var(--border); padding-left: 10px; color: var(--muted); }
+  .md table { border-collapse: collapse; display: block; overflow-x: auto; }
+  .md th, .md td { border: 1px solid #d4d4da; padding: 4px 8px; text-align: left; }
+  .md th { background: rgba(0,0,0,.04); }
+  .md a { color: var(--user); }
+  .md hr { border: none; border-top: 1px solid #d4d4da; margin: 12px 0; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>Groq Chat</h1>
+  <select id="model" aria-label="Model">
+    {% for m in models %}<option value="{{ m }}" {% if m == default_model %}selected{% endif %}>{{ m }}</option>{% endfor %}
+  </select>
+  <button id="clear" type="button">New chat</button>
+</header>
+
+<div id="log"><div class="wrap" id="messages"><div class="empty">Ask anything.</div></div></div>
+
+<form id="form">
+  <textarea id="input" rows="1" placeholder="Message (Enter to send, Shift+Enter for newline)" autofocus></textarea>
+  <button id="send" type="submit">Send</button>
+</form>
+
+<script>
+  const history = [];
+  const $ = id => document.getElementById(id);
+  const log = $("log"), list = $("messages"), input = $("input"), send = $("send");
+
+  function add(cls, text) {
+    list.querySelector(".empty")?.remove();
+    const el = document.createElement("div");
+    el.className = "msg " + cls;
+    el.textContent = text;
+    list.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  // Render markdown if the libraries loaded; otherwise fall back to plain text.
+  function renderMarkdown(el, text) {
+    if (window.marked && window.DOMPurify) {
+      el.innerHTML = DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: true }));
+      el.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+      el.classList.add("md");
+    } else {
+      el.textContent = text;
+    }
+  }
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = input.scrollHeight + "px";
+  }
+
+  async function submit() {
+    const text = input.value.trim();
+    if (!text || send.disabled) return;
+    input.value = ""; autosize();
+    history.push({ role: "user", content: text });
+    add("user", text);
+    const pending = add("assistant typing", "Thinking…");
+    send.disabled = true;
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history, model: $("model").value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      pending.className = "msg assistant";
+      renderMarkdown(pending, data.reply);
+      history.push({ role: "assistant", content: data.reply });
+    } catch (err) {
+      pending.remove();
+      history.pop();  // drop the unanswered turn so a retry doesn't duplicate it
+      add("error", err.message);
+      input.value = text; autosize();
+    } finally {
+      send.disabled = false;
+      input.focus();
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  $("form").addEventListener("submit", e => { e.preventDefault(); submit(); });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+  input.addEventListener("input", autosize);
+  $("clear").addEventListener("click", () => {
+    history.length = 0;
+    list.innerHTML = '<div class="empty">Ask anything.</div>';
+    input.focus();
+  });
+</script>
+</body>
+</html>
