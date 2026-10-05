@@ -1,0 +1,7 @@
+PASS: page, Markdown rendering, raw HTML escaping, conversation history, server system prompt
+.env ignored: True
+.env tracked: False
+Current key found in tracked working files: False
+Current key found in reachable local history: False
+Reachable commits inspected: 3
+Scope: current key and locally reachable history only; no claim about old keys or deleted remote history.

@@ -1,0 +1,5 @@
+I am Maya. Message 1, Alex: "I will try to review your slides soon." Message 2, Maya: "Thanks." What am I waiting on, and what is the deadline?
+Needs confirmation
+Candidate: Alex will review your slides soon.
+Evidence: Message 1, Alex: “I will try to review your slides soon.”
+Deadline: None specified in the conversation. You may want to confirm a specific date or time with Alex.

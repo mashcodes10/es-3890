@@ -3,19 +3,19 @@
 Web chat UI for Groq-hosted LLMs.
 
 Usage:
-    python3 app.py            # then open http://127.0.0.1:5000
+    python3 app.py            # then open http://127.0.0.1:5002
 
 Reads GROQ_API_KEY (and optionally GROQ_MODEL) from the environment or .env.
-Every prompt and its reply (or error) is appended to prompts.jsonl.
+Conversation text is not written to application logs.
 """
 
 import json
 import os
 import urllib.error
 import urllib.request
-from datetime import datetime
 
 from flask import Flask, jsonify, render_template, request
+from markdown_it import MarkdownIt
 
 from groq_chat import API_URL, DEFAULT_MODEL
 from backend import ask_groq
@@ -24,8 +24,11 @@ MODELS = [
     "openai/gpt-oss-20b",
     "openai/gpt-oss-120b",
 ]
-SYSTEM_PROMPT = "You are a helpful assistant."
-LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts.jsonl")
+SYSTEM_PROMPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_prompt.txt")
+with open(SYSTEM_PROMPT_PATH, encoding="utf-8") as prompt_file:
+    SYSTEM_PROMPT = prompt_file.read().strip()
+MARKDOWN = MarkdownIt("commonmark", {"html": False, "breaks": True})
+
 
 
 def load_dotenv(path=".env"):
@@ -40,22 +43,6 @@ def load_dotenv(path=".env"):
                 continue
             key, value = line.split("=", 1)
             os.environ.setdefault(key.strip(), value.strip().strip("'\""))
-
-
-def log_prompt(model, prompt, reply=None, error=None):
-    """Append one exchange to prompts.jsonl, one JSON object per line."""
-    entry = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "model": model,
-        "prompt": prompt,
-        "reply": reply,
-        "error": error,
-    }
-    try:
-        with open(LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except OSError as e:
-        app.logger.warning("Could not write prompt log: %s", e)
 
 
 load_dotenv()
@@ -104,6 +91,11 @@ def index():
     return render_template("chat.html", models=models, default_model=default)
 
 
+@app.route("/week6-sketch")
+def week6_sketch():
+    return render_template("week6_sketch.html")
+
+
 @app.route("/echo", methods=["GET", "POST"])
 @app.route("/assignment", methods=["GET", "POST"])
 def assignment():
@@ -144,15 +136,12 @@ def chat():
     if len(messages) < 2:
         return jsonify(error="No messages to send."), 400
 
-    prompt = messages[-1]["content"] if messages[-1]["role"] == "user" else None
-
     try:
         reply = ask(messages, model, api_key)
     except GroqError as e:
-        log_prompt(model, prompt, error=str(e))
         return jsonify(error=str(e)), 502
-    log_prompt(model, prompt, reply=reply)
-    return jsonify(reply=reply)
+    # Keep pasted context out of application logs.
+    return jsonify(reply=reply, reply_html=MARKDOWN.render(reply))
 
 
 if __name__ == "__main__":

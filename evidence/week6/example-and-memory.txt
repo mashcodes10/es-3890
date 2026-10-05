@@ -1,0 +1,22 @@
+I am Maya. Message 1, Maya: "I will send the draft to Sam by Friday." Message 2, Sam: "I will send you feedback Monday." My goal is to finish the report. I have 30 minutes, and drafting takes 20 minutes. What should I do?
+You owe
+Candidate: Send Sam the draft by Friday.
+Evidence: Message 1, Maya: “I will send the draft to Sam by Friday.”
+Waiting on
+Candidate: Sam’s feedback on Monday.
+Evidence: Message 2, Sam: “I will send you feedback Monday.”
+Needs confirmation
+
+Please confirm that these two commitments are accurate before I use them in a plan.
+
+Next actions
+Suggested action: Draft the report.
+Why? Drafting takes 20 minutes, which fits comfortably within your 30‑minute window and is a direct step toward completing your goal of finishing the report.
+
+Feel free to let me know if you’d like me to refine the plan once the commitments are confirmed.
+
+Yes, both commitments are confirmed. What were my goal, available time, and drafting estimate?
+Confirmed facts
+Goal: Finish the report.
+Available time: 30 minutes.
+Drafting estimate: 20 minutes.
